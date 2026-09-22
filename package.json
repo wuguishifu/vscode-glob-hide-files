@@ -1,0 +1,97 @@
+{
+  "name": "hide-files",
+  "displayName": "Hide Files",
+  "description": "Hide files matching a list of globs, and toggle them back into view from the command palette.",
+  "version": "0.1.0",
+  "publisher": "wuguishifu",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "hide",
+    "files",
+    "exclude",
+    "glob",
+    "explorer"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "hideFiles.toggle",
+        "title": "Hide Files: Toggle Hidden Files",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "hideFiles.hide",
+        "title": "Hide Files: Hide Matching Files"
+      },
+      {
+        "command": "hideFiles.show",
+        "title": "Hide Files: Show Matching Files"
+      },
+      {
+        "command": "hideFiles.editPatterns",
+        "title": "Hide Files: Edit Patterns"
+      }
+    ],
+    "configuration": {
+      "title": "Hide Files",
+      "properties": {
+        "hideFiles.patterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "window",
+          "markdownDescription": "Globs to hide while hiding is enabled, e.g. `**/*.lock`, `node_modules`, `**/*.{png,jpg}`. These use the same syntax as `#files.exclude#` and are matched relative to the workspace folder."
+        },
+        "hideFiles.hiddenByDefault": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Whether files start out hidden the first time a workspace is opened. After that, the toggle state is remembered per workspace."
+        },
+        "hideFiles.configurationTarget": {
+          "type": "string",
+          "enum": [
+            "workspace",
+            "global"
+          ],
+          "enumDescriptions": [
+            "Write to the workspace's settings, so hiding only affects this workspace.",
+            "Write to your user settings, so hiding affects every workspace."
+          ],
+          "default": "workspace",
+          "markdownDescription": "Where the generated `#files.exclude#` entries are written. Falls back to user settings when no folder is open."
+        },
+        "hideFiles.showStatusBarItem": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a status bar item indicating whether files are currently hidden."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wuguishifu/vscode-hide-files"
+  }
+}
