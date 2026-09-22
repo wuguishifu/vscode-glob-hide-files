@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
 
-const SECTION = 'hideFiles';
+const SECTION = 'globHideFiles';
 const EXCLUDE_KEY = 'files.exclude';
 
 /** Whether hiding is currently on. Remembered per workspace. */
-const HIDDEN_STATE = 'hideFiles.hidden';
+const HIDDEN_STATE = 'globHideFiles.hidden';
 /**
  * The `files.exclude` entries this extension added, mapped to whatever was
  * there before (`null` when the key was absent), so showing files again puts
  * the user's own settings back exactly as they were.
  */
-const MANAGED_STATE = 'hideFiles.managed';
+const MANAGED_STATE = 'globHideFiles.managed';
 
 type ExcludeValue = boolean | { when?: string };
 type ExcludeMap = Record<string, ExcludeValue>;
@@ -111,7 +111,7 @@ async function apply(context: vscode.ExtensionContext, hidden: boolean): Promise
 
 /**
  * Clean up entries left in the target we are no longer writing to, which happens
- * when `hideFiles.configurationTarget` changes — possibly in an earlier session.
+ * when `globHideFiles.configurationTarget` changes — possibly in an earlier session.
  */
 async function restoreOtherTarget(context: vscode.ExtensionContext, to: vscode.ConfigurationTarget): Promise<void> {
     const other = to === vscode.ConfigurationTarget.Global
@@ -155,11 +155,11 @@ function updateStatusBar(context: vscode.ExtensionContext): void {
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    statusBarItem.command = 'hideFiles.toggle';
+    statusBarItem.command = 'globHideFiles.toggle';
     context.subscriptions.push(statusBarItem);
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('hideFiles.toggle', async () => {
+        vscode.commands.registerCommand('globHideFiles.toggle', async () => {
             const hidden = !isHidden(context);
             if (hidden && patterns().length === 0) {
                 await promptForPatterns();
@@ -167,15 +167,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             }
             await apply(context, hidden);
         }),
-        vscode.commands.registerCommand('hideFiles.hide', async () => {
+        vscode.commands.registerCommand('globHideFiles.hide', async () => {
             if (patterns().length === 0) {
                 await promptForPatterns();
                 return;
             }
             await apply(context, true);
         }),
-        vscode.commands.registerCommand('hideFiles.show', () => apply(context, false)),
-        vscode.commands.registerCommand('hideFiles.editPatterns', () =>
+        vscode.commands.registerCommand('globHideFiles.show', () => apply(context, false)),
+        vscode.commands.registerCommand('globHideFiles.editPatterns', () =>
             vscode.commands.executeCommand('workbench.action.openSettings', `${SECTION}.patterns`)
         )
     );

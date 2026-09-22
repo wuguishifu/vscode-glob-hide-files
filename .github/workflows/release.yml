@@ -1,0 +1,153 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version-bump-type:
+        description: Version bump type
+        required: false
+        type: choice
+        default: patch
+        options:
+          - major
+          - minor
+          - patch
+      dry-run:
+        description: Preview changes without publishing
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# Least privilege by default; the release job grants itself more.
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: bump version
+        id: version
+        run: |
+          ./scripts/versioning/version-bump.sh \
+            ${{ inputs.version-bump-type }}
+
+  package:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: install deps
+        run: npm ci
+
+      - name: typecheck
+        run: npx tsc -p ./ --noEmit
+
+      - name: update package version
+        run: |
+          ./scripts/versioning/set-package-version.sh \
+            ${{ needs.version.outputs.version }}
+
+      # Building the .vsix once and publishing that exact file guarantees the
+      # artifact on the release is byte-for-byte what the marketplace serves.
+      - name: package extension
+        run: |
+          npx --yes @vscode/vsce package \
+            --out glob-hide-files-${{ needs.version.outputs.version }}.vsix
+
+      - name: upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: '*.vsix'
+          retention-days: 1
+
+  publish:
+    needs: [version, package]
+    if: ${{ !inputs.dry-run }}
+    runs-on: ubuntu-latest
+    # Mapped here rather than per-step because the `secrets` context is not
+    # available to `if:` conditions, but `env` is.
+    env:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    steps:
+      - name: download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vsix
+
+      - name: publish to vs code marketplace
+        run: |
+          npx --yes @vscode/vsce publish \
+            --packagePath glob-hide-files-${{ needs.version.outputs.version }}.vsix
+
+      # Open VSX serves Cursor / Windsurf / VSCodium, which cannot reach the
+      # Microsoft marketplace. Skipped automatically when OVSX_PAT is unset.
+      - name: publish to open vsx
+        if: ${{ env.OVSX_PAT != '' }}
+        run: |
+          npx --yes ovsx publish \
+            glob-hide-files-${{ needs.version.outputs.version }}.vsix \
+            -p "$OVSX_PAT"
+
+  release:
+    needs: [version, package, publish]
+    if: ${{ !inputs.dry-run }}
+    runs-on: ubuntu-latest
+    # contents: write creates the release and its tag; actions: write is
+    # required to delete the intermediate build artifacts afterwards.
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: publish vsix to github release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: glob-hide-files v${{ needs.version.outputs.version }}
+          files: artifacts/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+      - name: delete temporary actions artifacts
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
+            --paginate \
+            --jq '.artifacts[].id' |
+          while read artifact_id; do
+            echo "Deleting artifact $artifact_id"
+            gh api \
+              --method DELETE \
+              repos/${{ github.repository }}/actions/artifacts/$artifact_id
+          done
