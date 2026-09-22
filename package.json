@@ -2,7 +2,7 @@
   "name": "hide-files",
   "displayName": "Hide Files",
   "description": "Hide files matching a list of globs, and toggle them back into view from the command palette.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "wuguishifu",
   "license": "MIT",
   "engines": {
@@ -62,15 +62,15 @@
         "hideFiles.configurationTarget": {
           "type": "string",
           "enum": [
-            "workspace",
-            "global"
+            "global",
+            "workspace"
           ],
           "enumDescriptions": [
-            "Write to the workspace's settings, so hiding only affects this workspace.",
-            "Write to your user settings, so hiding affects every workspace."
+            "Write to your user settings. Nothing is written into the project, so no git-tracked files change.",
+            "Write to the workspace's settings, so hiding only affects this workspace. Note that this modifies .vscode/settings.json (or the .code-workspace file), which is often tracked by git."
           ],
-          "default": "workspace",
-          "markdownDescription": "Where the generated `#files.exclude#` entries are written. Falls back to user settings when no folder is open."
+          "default": "global",
+          "markdownDescription": "Where the generated `#files.exclude#` entries are written. `global` keeps the project clean; `workspace` scopes hiding to this project but modifies `.vscode/settings.json`, which is often tracked by git. Always falls back to user settings when no folder is open."
         },
         "hideFiles.showStatusBarItem": {
           "type": "boolean",

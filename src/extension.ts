@@ -33,8 +33,10 @@ function patterns(): string[] {
 
 function target(): vscode.ConfigurationTarget {
     const hasFolder = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
-    const preferred = config().get<string>('configurationTarget', 'workspace');
-    if (preferred === 'global' || !hasFolder) {
+    const preferred = config().get<string>('configurationTarget', 'global');
+    // Default to user settings so nothing is written into the project itself,
+    // where `.vscode/settings.json` is usually tracked by git.
+    if (preferred !== 'workspace' || !hasFolder) {
         return vscode.ConfigurationTarget.Global;
     }
     return vscode.ConfigurationTarget.Workspace;
