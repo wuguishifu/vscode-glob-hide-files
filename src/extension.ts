@@ -58,8 +58,19 @@ function readExclude(to: vscode.ConfigurationTarget): ExcludeMap {
 }
 
 async function writeExclude(to: vscode.ConfigurationTarget, exclude: ExcludeMap): Promise<void> {
+    // Any update rewrites the block in settings.json (reformatting it, and dirtying it
+    // if it's open in an editor), so skip no-op writes such as the one on every startup.
+    if (sameExclude(readExclude(to), exclude)) {
+        return;
+    }
     const value = Object.keys(exclude).length > 0 ? exclude : undefined;
     await vscode.workspace.getConfiguration().update(EXCLUDE_KEY, value, to);
+}
+
+function sameExclude(a: ExcludeMap, b: ExcludeMap): boolean {
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length
+        && keys.every(key => key in b && JSON.stringify(a[key]) === JSON.stringify(b[key]));
 }
 
 function isHidden(context: vscode.ExtensionContext): boolean {
